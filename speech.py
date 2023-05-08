@@ -48,6 +48,10 @@ def speak(text):
 
 
 def dialogManagement(text):
+    """
+    Simple finite state dialog management for testing purposes. Takes an utterance as input and
+    returns a textual response and a flag of wheter or not this ends the conversation
+    """
     text = text.lower()
     triggers = ["talk to you later", "better luck next time", "see you"]
     for trigger in triggers:
@@ -64,6 +68,21 @@ def dialogManagement(text):
         if trigger in text:
             return True, "Hey how are you?"
 
+    triggers = ["what is your favorite color", "what is your favorite colour"]
+    for trigger in triggers:
+        if trigger in text:
+            return True, "My favorite color is red, what is yours" 
+
+    triggers = ["my favorite color is", "my favorite colour is"]
+    for trigger in triggers:
+        if trigger in text:
+            return True, "Nice" 
+
+    triggers = ["tell a story", "tell me a story"]
+    for trigger in triggers:
+        if trigger in text:
+            return True, "I don't really care for stories and now I am bored" 
+
     return True, "Sorry but I don't know how to respond to that"
 
    
@@ -75,8 +94,9 @@ def turnManagement(start_conversation=True): #need conversation log as well
     continue_conversation = True
     while continue_conversation:
         text = listen()
-        continue_conversation, response = dialogManagement(text)
-        speak(response)
+        if text:
+            continue_conversation, response = dialogManagement(text)
+            speak(response)
 
 
 turnManagement()

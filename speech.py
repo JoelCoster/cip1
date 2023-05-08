@@ -8,11 +8,6 @@ from colorama import Fore
 from colorama import Style
 from hugchat import hugchat
 
-chatbot = hugchat.ChatBot()
-
-id = chatbot.new_conversation()
-chatbot.change_conversation(id)
-
 colorama_init()
 
 
@@ -53,41 +48,39 @@ def speak(text):
         time.sleep(0.1)
 
 
-def dialogManagement(text):
-    """
-    Simple finite state dialog management for testing purposes. Takes an utterance as input and
-    returns a textual response and a flag of wheter or not this ends the conversation
-    """
-    text = text.lower()
-    triggers = ["talk to you later", "better luck next time", "see you"]
-    for trigger in triggers:
-        if trigger in text:
-            return False, "Till next time"
-        
-    triggers = ["how are you", "how are you doing", "good how about you"]
-    for trigger in triggers:
-        if trigger in text:
-            return True, "Mediocre at best"
-        
-    triggers = ["hello", "hey"]
-    for trigger in triggers:
-        if trigger in text:
-            return True, "Hey how are you?"
 
-    return True, chatbot.chat(text)
+class Snoop:
+    def __init__(self):
+        self.hugchat = hugchat.ChatBot()
+        self.id = self.hugchat.new_conversation()
+        self.hugchat.change_conversation(self.id)
 
+
+    def dialogManagement(self, text):
+        """
+        Simple finite state dialog management for testing purposes. Takes an utterance as input and
+        returns a textual response and a flag of wheter or not this ends the conversation
+        """
+        text = text.lower()
+        triggers = ["talk to you later", "better luck next time", "see you"]
+        for trigger in triggers:
+            if trigger in text:
+                return False, "Till next time"
+       
+        return True, self.hugchat.chat(text)
    
 
-def turnManagement(start_conversation=True): #need conversation log as well
-    if start_conversation:
-        speak("Hello, I am Snoop")
+    def run(self, start_conversation=True):
+        if start_conversation:
+            speak("Hello, I am Snoop")
 
-    continue_conversation = True
-    while continue_conversation:
-        text = listen()
-        if text:
-            continue_conversation, response = dialogManagement(text)
-            speak(response)
+        continue_conversation = True
+        while continue_conversation:
+            text = listen()
+            if text:
+                continue_conversation, response = self.dialogManagement(text)
+                speak(response)
 
 
-turnManagement()
+snoop = Snoop()
+snoop.run()

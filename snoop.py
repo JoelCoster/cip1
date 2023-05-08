@@ -6,7 +6,6 @@ import time
 from colorama import init as colorama_init
 from colorama import Fore
 from colorama import Style
-from hugchat import hugchat
 from datetime import datetime
 import os
 import sys
@@ -81,13 +80,6 @@ class ChatLog:
 
 class Snoop:
     def __init__(self):
-        # setup for huggingchat backend
-        self.hugchat = hugchat.ChatBot()
-        self.id = self.hugchat.new_conversation()
-        self.hugchat.change_conversation(self.id)
-        self.chatlog = ChatLog()
-
-        # setup for blenderbot backend
         model_name = "facebook/blenderbot-400M-distill"
         self.model = BlenderbotForConditionalGeneration.from_pretrained(model_name)
         self.tokenizer = BlenderbotTokenizer.from_pretrained(model_name)
@@ -107,7 +99,6 @@ class Snoop:
         inputs = self.tokenizer([text], return_tensors="pt")
         reply_ids = self.model.generate(**inputs, max_new_tokens=100)
 
-        # return True, self.hugchat.chat(text, temperature=0.5) huggingchat backend
         return True, re.sub(r'<.*?>', r'', self.tokenizer.batch_decode(reply_ids)[0]).strip()
    
 

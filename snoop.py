@@ -13,6 +13,7 @@ from transformers import BlenderbotTokenizer, BlenderbotForConditionalGeneration
 import re
 
 colorama_init()
+global mic_index
 mic_index = 0
 
 

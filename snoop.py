@@ -13,12 +13,13 @@ from transformers import BlenderbotTokenizer, BlenderbotForConditionalGeneration
 import re
 
 colorama_init()
+mic_index = 0
 
 
 def listen():
     stt = sr.Recognizer()
 
-    with sr.Microphone() as source:
+    with sr.Microphone(device_index = mic_index) as source:
         print(f"{Fore.GREEN}Listening...{Style.RESET_ALL}")
         stt.pause_threshold = 1
         audio = stt.listen(source)
@@ -125,6 +126,9 @@ class Snoop:
 
 
 if __name__ == "__main__":
+    for arg in sys.argv:
+        if "--mic" in arg: mic_index = int(arg[-1])
+
     snoop = Snoop()
     speech, start_converstation = False, False
     print(sys.argv)

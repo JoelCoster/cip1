@@ -95,7 +95,7 @@ class Snoop:
             if trigger in text:
                 return False, "Till next time"
        
-        return True, self.hugchat.chat(text, truncate=400)
+        return True, self.hugchat.chat(text, temperature=0.5)
    
 
     def run(self, start_conversation=True, speech=False):

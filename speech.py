@@ -6,6 +6,12 @@ import time
 from colorama import init as colorama_init
 from colorama import Fore
 from colorama import Style
+from hugchat import hugchat
+
+chatbot = hugchat.ChatBot()
+
+id = chatbot.new_conversation()
+chatbot.change_conversation(id)
 
 colorama_init()
 
@@ -68,22 +74,7 @@ def dialogManagement(text):
         if trigger in text:
             return True, "Hey how are you?"
 
-    triggers = ["what is your favorite color", "what is your favorite colour"]
-    for trigger in triggers:
-        if trigger in text:
-            return True, "My favorite color is red, what is yours" 
-
-    triggers = ["my favorite color is", "my favorite colour is"]
-    for trigger in triggers:
-        if trigger in text:
-            return True, "Nice" 
-
-    triggers = ["tell a story", "tell me a story"]
-    for trigger in triggers:
-        if trigger in text:
-            return True, "I don't really care for stories and now I am bored" 
-
-    return True, "Sorry but I don't know how to respond to that"
+    return True, chatbot.chat(text)
 
    
 

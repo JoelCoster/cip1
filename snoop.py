@@ -81,13 +81,12 @@ class ChatLog:
         export.close()
 
 
-
 class Snoop:
     def __init__(self):
         self.chatlog = ChatLog()
-        #model_name = "facebook/blenderbot-400m-distill"
+        model_name = "facebook/blenderbot-400m-distill"
         #model_name = "facebook/blenderbot-1B-distill"
-        model_name = "facebook/blenderbot-3B"
+        #model_name = "facebook/blenderbot-3B"
         self.model = BlenderbotForConditionalGeneration.from_pretrained(model_name)
         self.tokenizer = BlenderbotTokenizer.from_pretrained(model_name)
 

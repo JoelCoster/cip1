@@ -36,7 +36,7 @@ def speak(text):
 
     print(f"{Fore.MAGENTA}System: {Style.RESET_ALL}{text}")
 
-    tts = gTTS(text, lang='en')
+    tts = gTTS(text, lang='en', tld='ca')
     tts.write_to_fp(mp3_fp)
 
     mixer.init()
@@ -46,7 +46,6 @@ def speak(text):
 
     while mixer.music.get_busy():
         time.sleep(0.1)
-
 
 
 class Snoop:
@@ -67,19 +66,22 @@ class Snoop:
             if trigger in text:
                 return False, "Till next time"
        
-        return True, self.hugchat.chat(text)
+        return True, self.hugchat.chat(text, truncate=400)
    
 
-    def run(self, start_conversation=True):
+    def run(self, start_conversation=True, speech=False):
         if start_conversation:
-            speak("Hello, I am Snoop")
+            if speech: speak("Hello, I am Snoop")
+            else: print("Hello, I am Snoop")
 
         continue_conversation = True
         while continue_conversation:
-            text = listen()
+            if speech: text = listen()
+            else: text = input("> ")
             if text:
                 continue_conversation, response = self.dialogManagement(text)
-                speak(response)
+                if speech: speak(response)
+                else: print(response)
 
 
 snoop = Snoop()

@@ -80,6 +80,7 @@ class ChatLog:
 
 class Snoop:
     def __init__(self):
+        self.chatlog = ChatLog()
         model_name = "facebook/blenderbot-400M-distill"
         self.model = BlenderbotForConditionalGeneration.from_pretrained(model_name)
         self.tokenizer = BlenderbotTokenizer.from_pretrained(model_name)
@@ -125,7 +126,11 @@ class Snoop:
 
 if __name__ == "__main__":
     snoop = Snoop()
-    if len(sys.argv) > 1 and sys.argv[1] == "--speech":
-        snoop.run(speech=True)
-    else:
-        snoop.run()
+    speech, start_converstation = False, False
+    print(sys.argv)
+    if "--speech" in sys.argv:
+        speech = True
+    if "--start" in sys.argv:
+        start_converstation = True
+        
+    snoop.run(start_conversation=start_converstation, speech=speech)

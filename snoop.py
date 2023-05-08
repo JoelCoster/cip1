@@ -92,10 +92,10 @@ class Snoop:
         returns a textual response and a flag of wheter or not this ends the conversation
         """
         text = text.lower()
-        triggers = ["talk to you later", "better luck next time", "see you", "exit"]
+        triggers = ["talk to you later", "exit"]
         for trigger in triggers:
             if trigger in text:
-                return False, "Till next time"
+                return False, "Goodbye"
 
         inputs = self.tokenizer([text], return_tensors="pt")
         reply_ids = self.model.generate(**inputs, max_new_tokens=100)

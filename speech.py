@@ -7,6 +7,8 @@ from colorama import init as colorama_init
 from colorama import Fore
 from colorama import Style
 from hugchat import hugchat
+from datetime import datetime
+import os
 
 colorama_init()
 
@@ -48,11 +50,38 @@ def speak(text):
         time.sleep(0.1)
 
 
+class ChatLog:
+    def __init__(self):
+        self.log = []
+
+    def addLine(self, participant, line):
+        self.log.append([participant, line])
+
+    def getLog(self):
+        return self.log
+    
+    def getParticipantLog(self, participant):
+        return [line for line in self.log if line[0] == participant]
+    
+    def exportCSV(self):
+        exist = os.path.exists("logs")
+        if not exist:
+            os.makedirs("logs")
+
+        filename = datetime.now().strftime("logs/%m-%d-%Y %H_%M_%S.csv")
+        export = open(filename, "w")
+        for line in self.log:
+            export.write("\"" + str(line[0]) + "\",\"" + line[1].replace("\n", " ") + "\"\n")
+        export.close()
+
+
+
 class Snoop:
     def __init__(self):
         self.hugchat = hugchat.ChatBot()
         self.id = self.hugchat.new_conversation()
         self.hugchat.change_conversation(self.id)
+        self.chatlog = ChatLog()
 
 
     def dialogManagement(self, text):
@@ -71,18 +100,23 @@ class Snoop:
 
     def run(self, start_conversation=True, speech=False):
         if start_conversation:
-            if speech: speak("Hello, I am Snoop")
-            else: print("Hello, I am Snoop")
+            initial_utterance = "Hello, I am Snoop"
+            if speech: speak(initial_utterance)
+            else: print(initial_utterance)
+            self.chatlog.addLine("Snoop", initial_utterance)
 
         continue_conversation = True
         while continue_conversation:
             if speech: text = listen()
             else: text = input("> ")
             if text:
+                self.chatlog.addLine("User", text)
                 continue_conversation, response = self.dialogManagement(text)
                 if speech: speak(response)
                 else: print(response)
+                self.chatlog.addLine("Snoop", response)
 
+        self.chatlog.exportCSV()
 
 snoop = Snoop()
 snoop.run()

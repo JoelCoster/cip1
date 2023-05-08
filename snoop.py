@@ -9,6 +9,9 @@ from colorama import Style
 from hugchat import hugchat
 from datetime import datetime
 import os
+import sys
+from transformers import BlenderbotTokenizer, BlenderbotForConditionalGeneration
+import re
 
 colorama_init()
 
@@ -78,10 +81,16 @@ class ChatLog:
 
 class Snoop:
     def __init__(self):
+        # setup for huggingchat backend
         self.hugchat = hugchat.ChatBot()
         self.id = self.hugchat.new_conversation()
         self.hugchat.change_conversation(self.id)
         self.chatlog = ChatLog()
+
+        # setup for blenderbot backend
+        model_name = "facebook/blenderbot-400M-distill"
+        self.model = BlenderbotForConditionalGeneration.from_pretrained(model_name)
+        self.tokenizer = BlenderbotTokenizer.from_pretrained(model_name)
 
 
     def dialogManagement(self, text):
@@ -90,33 +99,42 @@ class Snoop:
         returns a textual response and a flag of wheter or not this ends the conversation
         """
         text = text.lower()
-        triggers = ["talk to you later", "better luck next time", "see you"]
+        triggers = ["talk to you later", "better luck next time", "see you", "exit"]
         for trigger in triggers:
             if trigger in text:
                 return False, "Till next time"
-       
-        return True, self.hugchat.chat(text, temperature=0.5)
+
+        inputs = self.tokenizer([text], return_tensors="pt")
+        reply_ids = self.model.generate(**inputs, max_new_tokens=100)
+
+        # return True, self.hugchat.chat(text, temperature=0.5) huggingchat backend
+        return True, re.sub(r'<.*?>', r'', self.tokenizer.batch_decode(reply_ids)[0]).strip()
    
 
     def run(self, start_conversation=True, speech=False):
         if start_conversation:
             initial_utterance = "Hello, I am Snoop"
             if speech: speak(initial_utterance)
-            else: print(initial_utterance)
+            else: print(f"{Fore.MAGENTA}System: {Style.RESET_ALL}{initial_utterance}")
             self.chatlog.addLine("Snoop", initial_utterance)
 
         continue_conversation = True
         while continue_conversation:
             if speech: text = listen()
-            else: text = input("> ")
+            else: text = input(f"{Fore.CYAN}User: {Style.RESET_ALL}")
             if text:
                 self.chatlog.addLine("User", text)
                 continue_conversation, response = self.dialogManagement(text)
                 if speech: speak(response)
-                else: print(response)
+                else: print(f"{Fore.MAGENTA}System: {Style.RESET_ALL}{response}")
                 self.chatlog.addLine("Snoop", response)
 
         self.chatlog.exportCSV()
 
-snoop = Snoop()
-snoop.run()
+
+if __name__ == "__main__":
+    snoop = Snoop()
+    if len(sys.argv) > 1 and sys.argv[1] == "--speech":
+        snoop.run(speech=True)
+    else:
+        snoop.run()

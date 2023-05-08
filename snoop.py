@@ -1,13 +1,15 @@
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
+
 import speech_recognition as sr
 from gtts import gTTS
 from io import BytesIO
-from pygame import mixer
 import time
 from colorama import init as colorama_init
 from colorama import Fore
 from colorama import Style
 from datetime import datetime
-import os
+from pygame import mixer
 import sys
 from transformers import BlenderbotTokenizer, BlenderbotForConditionalGeneration
 import re
@@ -83,16 +85,14 @@ class ChatLog:
 class Snoop:
     def __init__(self):
         self.chatlog = ChatLog()
-        model_name = "facebook/blenderbot-400M-distill"
+        #model_name = "facebook/blenderbot-400m-distill"
+        #model_name = "facebook/blenderbot-1B-distill"
+        model_name = "facebook/blenderbot-3B"
         self.model = BlenderbotForConditionalGeneration.from_pretrained(model_name)
         self.tokenizer = BlenderbotTokenizer.from_pretrained(model_name)
 
 
     def dialogManagement(self, text):
-        """
-        Simple finite state dialog management for testing purposes. Takes an utterance as input and
-        returns a textual response and a flag of wheter or not this ends the conversation
-        """
         text = text.lower()
         triggers = ["talk to you later", "exit"]
         for trigger in triggers:
@@ -132,7 +132,6 @@ if __name__ == "__main__":
 
     snoop = Snoop()
     speech, start_converstation = False, False
-    print(sys.argv)
     if "--speech" in sys.argv:
         speech = True
     if "--start" in sys.argv:

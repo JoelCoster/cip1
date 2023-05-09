@@ -134,10 +134,10 @@ if __name__ == "__main__":
         if "--mic" in arg: mic_index = int(arg[-1])
 
     snoop = Snoop()
-    speech, start_converstation = False, False
+    speech, start_conversation = False, False
     if "--speech" in sys.argv:
         speech = True
     if "--start" in sys.argv:
-        start_converstation = True
+        start_conversation = True
 
-    snoop.run(start_conversation=start_converstation, speech=speech)
+    snoop.run(start_conversation=start_conversation, speech=speech)

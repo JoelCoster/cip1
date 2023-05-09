@@ -1,5 +1,5 @@
 import os
-import speech as sr
+import speech_recognition as sr
 import time
 import sys
 import re

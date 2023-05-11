@@ -3,8 +3,10 @@ import speech_recognition as sr
 import time
 import sys
 import re
+import pandas as pd
 
-from transformers import BlenderbotTokenizer, BlenderbotForConditionalGeneration
+from transformers import BlenderbotTokenizer, \
+    BlenderbotForConditionalGeneration
 from gtts import gTTS
 from io import BytesIO
 from colorama import init as colorama_init
@@ -19,30 +21,30 @@ colorama_init()
 mic_index = 0
 
 
-def listen():
+def listen(i_participant):
     stt = sr.Recognizer()
 
     with sr.Microphone(device_index=mic_index) as source:
         print(f"{Fore.GREEN}Listening...{Style.RESET_ALL}")
         stt.pause_threshold = 1
+        start_utter = datetime.now()
         audio = stt.listen(source)
-
     try:
         print(f"{Fore.GREEN}Recognizing...{Style.RESET_ALL}")
         query = stt.recognize_google(audio, language='en-us')
-        print(f"{Fore.CYAN}User: {Style.RESET_ALL}{query}")
+        print(f"{Fore.CYAN}{i_participant}: {Style.RESET_ALL}{query}")
 
     except Exception as e:
         print(e)
-        return None
+        return None, None
 
-    return query
+    return query, start_utter
 
 
-def speak(text):
+def speak(text, o_participant):
     mp3_fp = BytesIO()
 
-    print(f"{Fore.MAGENTA}System: {Style.RESET_ALL}{text}")
+    print(f"{Fore.MAGENTA}{o_participant}: {Style.RESET_ALL}{text}")
 
     tts = gTTS(text, lang='en', tld='ca')
     tts.write_to_fp(mp3_fp)
@@ -58,10 +60,20 @@ def speak(text):
 
 class ChatLog:
     def __init__(self):
-        self.log = []
+        self.id = 0
+        self.log = {'time': [],
+                    'speaker': [],
+                    'utterance': []}
 
-    def addLine(self, participant, line):
-        self.log.append([participant, line])
+    def addLine(self, participant, line, utter_start):
+        # Set time for line
+        self.log['time'].append(str(utter_start))
+
+        # Set speaker for line
+        self.log['speaker'].append(participant)
+
+        # Set utterance for line
+        self.log['utterance'].append(line)
 
     def getLog(self):
         return self.log
@@ -75,10 +87,8 @@ class ChatLog:
             os.makedirs("logs")
 
         filename = datetime.now().strftime("logs/%m-%d-%Y %H_%M_%S.csv")
-        export = open(filename, "w")
-        for line in self.log:
-            export.write("\"" + str(line[0]) + "\",\"" + line[1].replace("\n", " ") + "\"\n")
-        export.close()
+        log_df = pd.DataFrame(self.log)
+        log_df.to_csv(filename, index=True)
 
 
 class Snoop:
@@ -87,8 +97,10 @@ class Snoop:
         model_name = "facebook/blenderbot-400m-distill"
         # model_name = "facebook/blenderbot-1B-distill"
         # model_name = "facebook/blenderbot-3B"
-        self.model = BlenderbotForConditionalGeneration.from_pretrained(model_name)
+        self.model = BlenderbotForConditionalGeneration.from_pretrained(
+            model_name)
         self.tokenizer = BlenderbotTokenizer.from_pretrained(model_name)
+        self.start_utter = datetime.now()
 
     def dialogManagement(self, text):
         text = text.lower()
@@ -100,38 +112,63 @@ class Snoop:
         inputs = self.tokenizer([text], return_tensors="pt")
         reply_ids = self.model.generate(**inputs, max_new_tokens=100)
 
-        return True, re.sub(r'<.*?>', r'', self.tokenizer.batch_decode(reply_ids)[0]).strip()
+        return True, re.sub(r'<.*?>', r'',
+                            self.tokenizer.batch_decode(reply_ids)[0]).strip()
 
-    def run(self, start_conversation=True, speech=False):
+    def updateStartUtter(self, start_utter=None):
+        if start_utter:
+            self.start_utter = start_utter
+        else:
+            self.start_utter = datetime.now()
+    def run(self, start_conversation=True, speech=False, i='JAM', o='SNO'):
+        # Set speaker names for in- and output
+        i_participant = '{0}_IN'.format(i)
+        o_participant = '{0}_OUT'.format(o)
+
         if start_conversation:
             initial_utterance = "Hello, I am Snoop"
             if speech:
-                speak(initial_utterance)
+                self.updateStartUtter()
+                speak(initial_utterance, o_participant)
             else:
-                print(f"{Fore.MAGENTA}System: {Style.RESET_ALL}{initial_utterance}")
-            self.chatlog.addLine("Snoop", initial_utterance)
+                print(
+                    f"{Fore.MAGENTA}{o_participant}: {Style.RESET_ALL}{initial_utterance}")
+            self.chatlog.addLine(o_participant, initial_utterance,
+                                 self.start_utter)
 
         continue_conversation = True
         while continue_conversation:
             if speech:
-                text = listen()
+                text, start_utter = listen(i_participant)
             else:
-                text = input(f"{Fore.CYAN}User: {Style.RESET_ALL}")
+                start_utter = datetime.now()
+                text = input(f"{Fore.CYAN}{i_participant}: {Style.RESET_ALL}")
+            self.updateStartUtter(start_utter)
+
             if text:
-                self.chatlog.addLine("User", text)
+                self.chatlog.addLine(i_participant, text, self.start_utter)
                 continue_conversation, response = self.dialogManagement(text)
                 if speech:
-                    speak(response)
+                    self.updateStartUtter()
+                    speak(response, o_participant)
                 else:
-                    print(f"{Fore.MAGENTA}System: {Style.RESET_ALL}{response}")
-                self.chatlog.addLine("Snoop", response)
+                    print(
+                        f"{Fore.MAGENTA}{o_participant}: {Style.RESET_ALL}{response}")
+                self.chatlog.addLine(o_participant, response, self.start_utter)
 
         self.chatlog.exportCSV()
 
 
 if __name__ == "__main__":
+    i, o = 'JAM', 'SNO'
+
     for arg in sys.argv:
-        if "--mic" in arg: mic_index = int(arg[-1])
+        if "--mic" in arg:
+            mic_index = int(arg[-1])
+        if "--i" in arg:
+            i = arg.split('=')[-1]
+        if "--o" in arg:
+            o = arg.split('=')[-1]
 
     snoop = Snoop()
     speech, start_conversation = False, False
@@ -140,4 +177,4 @@ if __name__ == "__main__":
     if "--start" in sys.argv:
         start_conversation = True
 
-    snoop.run(start_conversation=start_conversation, speech=speech)
+    snoop.run(start_conversation=start_conversation, speech=speech, i=i, o=o)

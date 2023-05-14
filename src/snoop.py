@@ -57,7 +57,7 @@ def speak(text, o_participant):
     mixer.music.play()
 
     while mixer.music.get_busy():
-        time.sleep(0.1)
+        time.sleep(0.01)
 
 
 
@@ -67,16 +67,11 @@ class ChatLog:
         self.log = {'time': [],
                     'speaker': [],
                     'utterance': []}
-
+        
 
     def addLine(self, participant, line, utter_start):
-        # Set time for line
         self.log['time'].append(str(utter_start))
-
-        # Set speaker for line
         self.log['speaker'].append(participant)
-
-        # Set utterance for line
         self.log['utterance'].append(line)
 
 
@@ -122,8 +117,7 @@ class Snoop:
         inputs = self.tokenizer([text], return_tensors="pt")
         reply_ids = self.model.generate(**inputs, max_new_tokens=100)
 
-        return True, re.sub(r'<.*?>', r'',
-                            self.tokenizer.batch_decode(reply_ids)[0]).strip()
+        return True, re.sub(r'<.*?>', r'', self.tokenizer.batch_decode(reply_ids)[0]).strip()
 
 
     def updateStartUtter(self, start_utter=None):

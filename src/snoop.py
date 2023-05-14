@@ -128,7 +128,11 @@ class Snoop:
 
 
     def introduceTopic(self):
-        return "Topic"
+        topics_file = open("assets/topics.txt", "r")
+        topics = []
+        for line in topics_file.readlines():
+            topics.append(line.strip())
+        return choice(topics)
 
 
     def startConversation(self):

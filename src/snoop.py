@@ -14,6 +14,7 @@ from colorama import Fore
 from colorama import Style
 from datetime import datetime
 from pygame import mixer
+from random import choice
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 
@@ -41,6 +42,7 @@ def listen(i_participant):
     return query, start_utter
 
 
+
 def speak(text, o_participant):
     mp3_fp = BytesIO()
 
@@ -58,12 +60,14 @@ def speak(text, o_participant):
         time.sleep(0.1)
 
 
+
 class ChatLog:
     def __init__(self):
         self.id = 0
         self.log = {'time': [],
                     'speaker': [],
                     'utterance': []}
+
 
     def addLine(self, participant, line, utter_start):
         # Set time for line
@@ -75,11 +79,14 @@ class ChatLog:
         # Set utterance for line
         self.log['utterance'].append(line)
 
+
     def getLog(self):
         return self.log
 
+
     def getParticipantLog(self, participant):
         return [line for line in self.log if line[0] == participant]
+
 
     def exportCSV(self):
         exist = os.path.exists("logs")
@@ -89,6 +96,7 @@ class ChatLog:
         filename = datetime.now().strftime("logs/%m-%d-%Y %H_%M_%S.csv")
         log_df = pd.DataFrame(self.log)
         log_df.to_csv(filename, index=True)
+
 
 
 class Snoop:
@@ -101,12 +109,14 @@ class Snoop:
             model_name)
         self.tokenizer = BlenderbotTokenizer.from_pretrained(model_name)
         self.start_utter = datetime.now()
+        self.i_participant = "User"
+        self.o_participant = "System"
+
 
     def dialogManagement(self, text):
-        text = text.lower()
-        triggers = ["talk to you later", "exit"]
+        triggers = ["talk to you later", "end the conversation", "end conversation"]
         for trigger in triggers:
-            if trigger in text:
+            if trigger in text.lower():
                 return False, "Goodbye"
 
         inputs = self.tokenizer([text], return_tensors="pt")
@@ -115,48 +125,70 @@ class Snoop:
         return True, re.sub(r'<.*?>', r'',
                             self.tokenizer.batch_decode(reply_ids)[0]).strip()
 
+
     def updateStartUtter(self, start_utter=None):
         if start_utter:
             self.start_utter = start_utter
         else:
             self.start_utter = datetime.now()
-    def run(self, start_conversation=True, speech=False, i='JAM', o='SNO'):
-        # Set speaker names for in- and output
-        i_participant = '{0}_IN'.format(i)
-        o_participant = '{0}_OUT'.format(o)
 
-        if start_conversation:
-            initial_utterance = "Hello, I am Snoop"
+
+    def startConversation(self):
+        made_contact = False
+        while not made_contact:
+            utterance = choice(["hello", "is anybody there", "hey"])
             if speech:
                 self.updateStartUtter()
-                speak(initial_utterance, o_participant)
+                speak(utterance, self.o_participant)
             else:
-                print(
-                    f"{Fore.MAGENTA}{o_participant}: {Style.RESET_ALL}{initial_utterance}")
-            self.chatlog.addLine(o_participant, initial_utterance,
-                                 self.start_utter)
-
-        continue_conversation = True
-        while continue_conversation:
+                print(f"{Fore.MAGENTA}{self.o_participant}: {Style.RESET_ALL}{utterance}")
+            self.chatlog.addLine(self.o_participant, utterance, self.start_utter)
+            
+                
             if speech:
-                text, start_utter = listen(i_participant)
+                text, start_utter = listen(self.i_participant)
             else:
                 start_utter = datetime.now()
-                text = input(f"{Fore.CYAN}{i_participant}: {Style.RESET_ALL}")
+                text = input(f"{Fore.CYAN}{self.i_participant}: {Style.RESET_ALL}")
             self.updateStartUtter(start_utter)
 
             if text:
-                self.chatlog.addLine(i_participant, text, self.start_utter)
+                triggers = ["hello", "hey", "how are you"]
+                for trigger in triggers:
+                    if trigger in text.lower():
+                        self.chatlog.addLine(self.i_participant, text, self.start_utter)
+                        return text
+
+
+    def run(self, start_conversation=True, speech=False, i='JAM', o='SNO'):
+        self.i_participant = '{0}_IN'.format(i)
+        self.o_participant = '{0}_OUT'.format(o)
+
+        continue_conversation = True
+        while continue_conversation:
+            start_utter = datetime.now()
+            if start_conversation:
+                text = self.startConversation()
+                start_conversation = False
+            elif speech:
+                text, start_utter = listen(self.i_participant)
+            else:
+                text = input(f"{Fore.CYAN}{self.i_participant}: {Style.RESET_ALL}")
+            self.updateStartUtter(start_utter)
+
+            if text:
+                self.chatlog.addLine(self.i_participant, text, self.start_utter)
                 continue_conversation, response = self.dialogManagement(text)
                 if speech:
                     self.updateStartUtter()
-                    speak(response, o_participant)
+                    speak(response, self.o_participant)
                 else:
                     print(
-                        f"{Fore.MAGENTA}{o_participant}: {Style.RESET_ALL}{response}")
-                self.chatlog.addLine(o_participant, response, self.start_utter)
+                        f"{Fore.MAGENTA}{self.o_participant}: {Style.RESET_ALL}{response}")
+                self.chatlog.addLine(self.o_participant, response, self.start_utter)
 
         self.chatlog.exportCSV()
+
 
 
 if __name__ == "__main__":

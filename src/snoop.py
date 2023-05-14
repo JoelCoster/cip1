@@ -136,7 +136,7 @@ class Snoop:
     def startConversation(self):
         made_contact = False
         while not made_contact:
-            utterance = choice(["hello", "is anybody there", "hey"])
+            utterance = choice(["hello", "is anybody there", "hey", "who's there"])
             if speech:
                 self.updateStartUtter()
                 speak(utterance, self.o_participant)
@@ -152,8 +152,10 @@ class Snoop:
                 text = input(f"{Fore.CYAN}{self.i_participant}: {Style.RESET_ALL}")
             self.updateStartUtter(start_utter)
 
-            if text:
-                triggers = ["hello", "hey", "how are you"]
+            if text: # triggers should be loaded from txt file in assets
+                triggers = ["hello", "hey", "how are you", "talking to me", "who are you", "hi", "sup",
+                            "what's up", "help,", "greetings", "salutations", "morning", "afternoon",
+                            "evening", "good day", "goodday", "i am"]
                 for trigger in triggers:
                     if trigger in text.lower():
                         self.chatlog.addLine(self.i_participant, text, self.start_utter)

@@ -127,10 +127,14 @@ class Snoop:
             self.start_utter = datetime.now()
 
 
+    def introduceTopic(self):
+        return "Topic"
+
+
     def startConversation(self):
         made_contact = False
         while not made_contact:
-            utterance = choice(["hello", "is anybody there", "hey", "who's there"])
+            utterance = choice(["hello", "is anybody there", "hey", "who's there", "greetings"])
             if speech:
                 self.updateStartUtter()
                 speak(utterance, self.o_participant)
@@ -138,7 +142,6 @@ class Snoop:
                 print(f"{Fore.MAGENTA}{self.o_participant}: {Style.RESET_ALL}{utterance}")
             self.chatlog.addLine(self.o_participant, utterance, self.start_utter)
             
-                
             if speech:
                 text, start_utter = listen(self.i_participant)
             else:
@@ -152,38 +155,48 @@ class Snoop:
                             "evening", "good day", "goodday", "i am"]
                 for trigger in triggers:
                     if trigger in text.lower():
-                        self.chatlog.addLine(self.i_participant, text, self.start_utter)
                         return text
 
 
     def run(self, start_conversation=True, speech=False, i='JAM', o='SNO'):
-        self.i_participant = '{0}_IN'.format(i)
-        self.o_participant = '{0}_OUT'.format(o)
+        try:
+            self.i_participant = '{0}_IN'.format(i)
+            self.o_participant = '{0}_OUT'.format(o)
 
-        continue_conversation = True
-        while continue_conversation:
-            start_utter = datetime.now()
-            if start_conversation:
-                text = self.startConversation()
-                start_conversation = False
-            elif speech:
-                text, start_utter = listen(self.i_participant)
-            else:
-                text = input(f"{Fore.CYAN}{self.i_participant}: {Style.RESET_ALL}")
-            self.updateStartUtter(start_utter)
-
-            if text:
-                self.chatlog.addLine(self.i_participant, text, self.start_utter)
-                continue_conversation, response = self.dialogManagement(text)
-                if speech:
-                    self.updateStartUtter()
-                    speak(response, self.o_participant)
+            continue_conversation = True
+            introduce_topic = False
+            while continue_conversation:
+                start_utter = datetime.now()
+                if start_conversation:
+                    text = self.startConversation()
+                    start_conversation = False
+                    if len(text.split()) < 6:
+                        introduce_topic = True
+                elif speech:
+                    text, start_utter = listen(self.i_participant)
                 else:
-                    print(
-                        f"{Fore.MAGENTA}{self.o_participant}: {Style.RESET_ALL}{response}")
-                self.chatlog.addLine(self.o_participant, response, self.start_utter)
+                    text = input(f"{Fore.CYAN}{self.i_participant}: {Style.RESET_ALL}")
+                self.updateStartUtter(start_utter)
 
-        self.chatlog.exportCSV()
+                if text:
+                    self.chatlog.addLine(self.i_participant, text, self.start_utter)
+                    if not introduce_topic:
+                        continue_conversation, response = self.dialogManagement(text)
+                    else:
+                        introduce_topic = False
+                        response = self.introduceTopic()
+                    if speech:
+                        self.updateStartUtter()
+                        speak(response, self.o_participant)
+                    else:
+                        print(
+                            f"{Fore.MAGENTA}{self.o_participant}: {Style.RESET_ALL}{response}")
+                    self.chatlog.addLine(self.o_participant, response, self.start_utter)
+
+            self.chatlog.exportCSV()
+
+        except KeyboardInterrupt:
+            self.chatlog.exportCSV()
 
 
 

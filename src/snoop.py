@@ -42,7 +42,6 @@ def listen(i_participant):
     return query, start_utter
 
 
-
 def speak(text, o_participant):
     mp3_fp = BytesIO()
 
@@ -60,38 +59,32 @@ def speak(text, o_participant):
         time.sleep(0.01)
 
 
-
 class ChatLog:
     def __init__(self):
         self.id = 0
         self.log = {'time': [],
                     'speaker': [],
                     'utterance': []}
-        
 
     def addLine(self, participant, line, utter_start):
         self.log['time'].append(str(utter_start))
         self.log['speaker'].append(participant)
         self.log['utterance'].append(line)
 
-
     def getLog(self):
         return self.log
 
-
     def getParticipantLog(self, participant):
         return [line for line in self.log if line[0] == participant]
-
 
     def exportCSV(self):
         exist = os.path.exists("logs")
         if not exist:
             os.makedirs("logs")
 
-        filename = datetime.now().strftime("logs/%m-%d-%Y %H_%M_%S.csv")
+        filename = f"logs/{datetime.now().isoformat(sep=' ', timespec='milliseconds')}.csv"
         log_df = pd.DataFrame(self.log)
         log_df.to_csv(filename, index=True)
-
 
 
 class Snoop:
@@ -107,7 +100,6 @@ class Snoop:
         self.i_participant = "User"
         self.o_participant = "System"
 
-
     def dialogManagement(self, text):
         triggers = ["talk to you later", "end the conversation", "end conversation"]
         for trigger in triggers:
@@ -119,13 +111,11 @@ class Snoop:
 
         return True, re.sub(r'<.*?>', r'', self.tokenizer.batch_decode(reply_ids)[0]).strip()
 
-
     def updateStartUtter(self, start_utter=None):
         if start_utter:
             self.start_utter = start_utter
         else:
             self.start_utter = datetime.now()
-
 
     def introduceTopic(self):
         topics_file = open("assets/topics.txt", "r")
@@ -133,7 +123,6 @@ class Snoop:
         for line in topics_file.readlines():
             topics.append(line.strip())
         return choice(topics)
-
 
     def startConversation(self):
         made_contact = False
@@ -145,7 +134,7 @@ class Snoop:
             else:
                 print(f"{Fore.MAGENTA}{self.o_participant}: {Style.RESET_ALL}{utterance}")
             self.chatlog.addLine(self.o_participant, utterance, self.start_utter)
-            
+
             if speech:
                 text, start_utter = listen(self.i_participant)
             else:
@@ -153,14 +142,13 @@ class Snoop:
                 text = input(f"{Fore.CYAN}{self.i_participant}: {Style.RESET_ALL}")
             self.updateStartUtter(start_utter)
 
-            if text: # triggers should be loaded from txt file in assets
+            if text:  # triggers should be loaded from txt file in assets
                 triggers = ["hello", "hey", "how are you", "talking to me", "who are you", "hi", "sup",
                             "what's up", "help,", "greetings", "salutations", "morning", "afternoon",
                             "evening", "good day", "goodday", "i am"]
                 for trigger in triggers:
                     if trigger in text.lower():
                         return text
-
 
     def run(self, start_conversation=True, speech=False, i='JAM', o='SNO'):
         try:
@@ -203,11 +191,11 @@ class Snoop:
             self.chatlog.exportCSV()
 
 
-
 if __name__ == "__main__":
     i, o = 'JAM', 'SNO'
 
     for arg in sys.argv:
+        print(arg)
         if "--mic" in arg:
             mic_index = int(arg[-1])
         if "--i" in arg:

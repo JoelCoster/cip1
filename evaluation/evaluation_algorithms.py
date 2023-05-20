@@ -1,10 +1,9 @@
 import string
 
 import nltk
+import pandas as pd
 from nltk.stem.porter import *
 from sklearn.feature_extraction.text import TfidfVectorizer
-
-from utilities import load_csv
 
 
 def get_cosine_sim(i, j, mat_tf):
@@ -60,7 +59,7 @@ def diversity_detector(i, df, speaker, mat_tf, repetition_threshold):
                         flag_rep = True
         if flag_question or flag_rep:
             r += 1
-    return r
+    return r, repeated_question
 
 
 def get_tfidf_cosine(document):
@@ -100,6 +99,11 @@ def get_tfidf_sim(df):
     return get_tfidf_cosine(document)
 
 
+def load_csv(df_file):
+    # Load a CSV transcript as a Pandas Dataframe
+    return pd.read_csv(df_file, index_col=0)
+
+
 def main():
     # Load the DataFrame from a CSV file
     df_file = '../src/logs/05-15-2023 13_42_36.csv'
@@ -108,14 +112,17 @@ def main():
     # Calculate the TF-IDF cosine similarity matrix
     mat_tf = get_tfidf_sim(df)
 
-    repetition_threshold = 0.8
+    rep_threshold = 0.8
     speaker = 'SNO'
 
     diversity_score = 0
     for i in range(df.shape[0]):
         # Calculate diversity score for each turn
-        diversity_score += diversity_detector(i, df, speaker, mat_tf,
-                                              repetition_threshold)
+        diversity_score_turn, rep_questions = diversity_detector(i, df,
+                                                                 speaker,
+                                                                 mat_tf,
+                                                                 rep_threshold)
+        diversity_score += diversity_score_turn
     print('Diversity score*: {0}'.format(diversity_score))
     print()
     print('*Lower score is better')

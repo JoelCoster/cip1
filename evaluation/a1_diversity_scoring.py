@@ -116,7 +116,9 @@ def main():
         # Calculate diversity score for each turn
         diversity_score += diversity_detector(i, df, speaker, mat_tf,
                                               repetition_threshold)
-    print('Diversity score: {0}'.format(diversity_score))
+    print('Diversity score*: {0}'.format(diversity_score))
+    print()
+    print('*Lower score is better')
 
 
 if __name__ == "__main__":

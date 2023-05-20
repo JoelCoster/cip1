@@ -11,57 +11,6 @@ def get_cosine_sim(i, j, mat_tf):
     return mat_tf[i, j]
 
 
-def has_question(sentence):
-    # Check if a sentence contains a question mark
-    return "?" in sentence
-
-
-def diversity_detector(i, df, speaker, mat_tf, repetition_threshold):
-    # Create a list of repeated turns and questions
-    repeated_turns = []
-    repeated_questions = []
-
-    # Set r to 0 (line 2 in pseudocode)
-    r = 0
-
-    # Determine current turn and previous turns
-    current_turn = df.iloc[i]
-    previous_turns = df.iloc[:i]
-
-    # Loop through turns said by speaker (line 3 in pseudocode)
-    if speaker in current_turn['speaker']:
-        for index, previous_turn in previous_turns.iterrows():
-            # Check if two utterances are similar (line 4 and 5 in pseudocode)
-            if get_cosine_sim(current_turn.name, previous_turn.name,
-                              mat_tf) >= repetition_threshold:
-                repeated_turns.append(previous_turn)
-
-    # Check if there are repeated utterances (line 6 in pseudocode;
-    # pseudocode and GitHub differ, taken GitHub)
-    if len(repeated_turns) > 0:
-        flag_question, flag_rep = False, False
-        for repeated_turn in repeated_turns:
-            # Check if the current turn and repeated turn is a question (line 7
-            # and 8 in pseudocode)
-            if has_question(repeated_turn['utterance']) and has_question(
-                    current_turn['utterance']):
-                repeated_questions.append(repeated_turn)
-                flag_question = True
-
-            # Check previous turn is not a repetitive question (line
-            # 9, 10 and 11 in pseudocode)
-            elif len(repeated_questions) > 0 and current_turn.name >= 1:
-                previous_turn = previous_turns.iloc[current_turn.name - 1]
-                for repeated_question in repeated_questions:
-                    if get_cosine_sim(previous_turn.name,
-                                      repeated_question.name,
-                                      mat_tf) <= repetition_threshold:
-                        flag_rep = True
-        if flag_question or flag_rep:
-            r += 1
-    return r, repeated_question
-
-
 def get_tfidf_cosine(document):
     # Calculate the TF-IDF cosine similarity matrix for a document
     vect = TfidfVectorizer(tokenizer=normalize, min_df=1)
@@ -104,28 +53,88 @@ def load_csv(df_file):
     return pd.read_csv(df_file, index_col=0)
 
 
+def has_question(sentence):
+    # Check if a sentence contains a question mark
+    return "?" in sentence
+
+
+def algorithm_1(current_turn, previous_turns, mat_tf, repetition_threshold):
+    # Create a list of repeated turns and questions
+    repeated_turns = []
+    repeated_questions = []
+
+    # Set r to 0 (line 2 in pseudocode)
+    r = 0
+
+    # Loop through turns said by speaker (line 3 in pseudocode)
+    for index, previous_turn in previous_turns.iterrows():
+        # Check if two utterances are similar (line 4 and 5 in pseudocode)
+        if get_cosine_sim(current_turn.name, previous_turn.name,
+                          mat_tf) >= repetition_threshold:
+            repeated_turns.append(previous_turn)
+
+    # Check if there are repeated utterances (line 6 in pseudocode;
+    # pseudocode and GitHub differ, taken GitHub)
+    if len(repeated_turns) > 0:
+        flag_question, flag_rep = False, False
+        for repeated_turn in repeated_turns:
+            # Check if the current turn and repeated turn is a question (line 7
+            # and 8 in pseudocode)
+            if has_question(repeated_turn['utterance']) and has_question(
+                    current_turn['utterance']):
+                repeated_questions.append(repeated_turn)
+                flag_question = True
+
+            # Check previous turn is not a repetitive question (line
+            # 9, 10 and 11 in pseudocode)
+            elif len(repeated_questions) > 0 and current_turn.name >= 1:
+                previous_turn = previous_turns.iloc[current_turn.name - 1]
+                for repeated_question in repeated_questions:
+                    if get_cosine_sim(previous_turn.name,
+                                      repeated_question.name,
+                                      mat_tf) <= repetition_threshold:
+                        flag_rep = True
+        if flag_question or flag_rep:
+            r += 1
+    return r
+
+
+def algorithm_2():
+    pass
+
+
+def algorithm_3():
+    pass
+
+
 def main():
     # Load the DataFrame from a CSV file
     df_file = '../src/logs/05-15-2023 13_42_36.csv'
     df = load_csv(df_file)
 
+    # Set speaker
+    speaker = 'SNO'
+
     # Calculate the TF-IDF cosine similarity matrix
     mat_tf = get_tfidf_sim(df)
 
+    # Calculate diversity score (Algorithm 1)
     rep_threshold = 0.8
-    speaker = 'SNO'
-
     diversity_score = 0
     for i in range(df.shape[0]):
-        # Calculate diversity score for each turn
-        diversity_score_turn, rep_questions = diversity_detector(i, df,
-                                                                 speaker,
-                                                                 mat_tf,
-                                                                 rep_threshold)
-        diversity_score += diversity_score_turn
-    print('Diversity score*: {0}'.format(diversity_score))
-    print()
-    print('*Lower score is better')
+        # Determine current turn and previous turns
+        current_turn = df.iloc[i]
+        previous_turns = df.iloc[:i]
+
+        # Check if utterance is said by current speaker
+        if speaker in current_turn['speaker']:
+            diversity_score += algorithm_1(current_turn, previous_turns,
+                                           mat_tf, rep_threshold)
+    print('Diversity score: {0}'.format(diversity_score))
+
+    # Calculate consistency score (Algorithm 2)
+
+    # Calculate relevance score (Algorithm 3)
 
 
 if __name__ == "__main__":

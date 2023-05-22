@@ -82,7 +82,7 @@ class ChatLog:
         if not exist:
             os.makedirs("logs")
 
-        filename = f"logs/{datetime.now().isoformat(sep=' ', timespec='milliseconds')}.csv"
+        filename = f"logs/{datetime.now().strftime('%d-%m-%Y_%H-%M-%S')}.csv"
         log_df = pd.DataFrame(self.log)
         log_df.to_csv(filename, index=True)
 

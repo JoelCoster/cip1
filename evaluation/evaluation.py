@@ -1,21 +1,24 @@
 import pandas as pd
+import argparse
 
 from algorithm_1_diversity import diversity
 from utils import get_tfidf_sim
 
 
-def load_csv(df_file):
-    # Load a CSV transcript as a Pandas Dataframe
-    return pd.read_csv(df_file, index_col=0)
+SPEAKER = 'SNO'
+
+
+def parse_args() -> argparse.ArgumentParser():
+    """ Parse command line arguments """
+    parser = argparse.ArgumentParser(description='Evaluate CIP logfile.')
+    parser.add_argument('-l', '--logfile', dest='logfile', help='Path to logfile', required=True, )
+    return parser.parse_args()
 
 
 def main():
-    # Load the DataFrame from a CSV file
-    df_file = '../src/logs/05-15-2023 13_42_36.csv'
-    df = load_csv(df_file)
+    args = parse_args()
 
-    # Set speaker
-    speaker = 'SNO'
+    df = pd.read_csv(args.logfile, index_col=0)
 
     # Calculate the TF-IDF cosine similarity matrix
     mat_tf = get_tfidf_sim(df)
@@ -29,7 +32,7 @@ def main():
         previous_turns = df.iloc[:i]
 
         # Check if utterance is said by current speaker
-        if speaker in current_turn['speaker']:
+        if SPEAKER in current_turn['speaker']:
             diversity_score += diversity(current_turn, previous_turns, mat_tf, rep_threshold)
     print('Diversity score: {0}'.format(diversity_score))
 

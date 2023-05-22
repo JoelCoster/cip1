@@ -1,20 +1,21 @@
 import os
-import speech_recognition as sr
-import time
-import sys
 import re
-import pandas as pd
-
-from transformers import BlenderbotTokenizer, \
-    BlenderbotForConditionalGeneration
-from gtts import gTTS
+import sys
+import time
+from datetime import datetime
 from io import BytesIO
-from colorama import init as colorama_init
+from random import choice
+
+import pandas as pd
+import speech_recognition as sr
 from colorama import Fore
 from colorama import Style
-from datetime import datetime
+from colorama import init as colorama_init
+from gtts import gTTS
 from pygame import mixer
-from random import choice
+from transformers import BlenderbotTokenizer, \
+    BlenderbotForConditionalGeneration
+from transformers import T5Tokenizer, T5ForConditionalGeneration
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 
@@ -22,7 +23,7 @@ colorama_init()
 mic_index = 0
 
 
-def listen(i_participant):
+def listen(i_participant, punct_tokenizer, punct_model):
     stt = sr.Recognizer()
 
     with sr.Microphone(device_index=mic_index) as source:
@@ -33,6 +34,14 @@ def listen(i_participant):
     try:
         print(f"{Fore.GREEN}Recognizing...{Style.RESET_ALL}")
         query = stt.recognize_google(audio, language='en-us')
+
+        inputs = punct_tokenizer.encode("punctuate: " + query,
+                                        return_tensors="pt")
+        result = punct_model.generate(inputs)
+
+        query = punct_tokenizer.decode(result[0],
+                                       skip_special_tokens=True)
+
         print(f"{Fore.CYAN}{i_participant}: {Style.RESET_ALL}{query}")
 
     except Exception as e:
@@ -100,8 +109,14 @@ class Snoop:
         self.i_participant = "User"
         self.o_participant = "System"
 
+        self.punct_tokenizer = T5Tokenizer.from_pretrained(
+            'SJ-Ray/Re-Punctuate')
+        self.punct_model = T5ForConditionalGeneration.from_pretrained(
+            'SJ-Ray/Re-Punctuate', from_tf=True)
+
     def dialogManagement(self, text):
-        triggers = ["talk to you later", "end the conversation", "end conversation"]
+        triggers = ["talk to you later", "end the conversation",
+                    "end conversation"]
         for trigger in triggers:
             if trigger in text.lower():
                 return False, "Goodbye"
@@ -109,7 +124,8 @@ class Snoop:
         inputs = self.tokenizer([text], return_tensors="pt")
         reply_ids = self.model.generate(**inputs, max_new_tokens=100)
 
-        return True, re.sub(r'<.*?>', r'', self.tokenizer.batch_decode(reply_ids)[0]).strip()
+        return True, re.sub(r'<.*?>', r'',
+                            self.tokenizer.batch_decode(reply_ids)[0]).strip()
 
     def updateStartUtter(self, start_utter=None):
         if start_utter:
@@ -118,7 +134,7 @@ class Snoop:
             self.start_utter = datetime.now()
 
     def introduceTopic(self):
-        topics_file = open("assets/topics.txt", "r")
+        topics_file = open("../assets/topics.txt", "r")
         topics = []
         for line in topics_file.readlines():
             topics.append(line.strip())
@@ -127,24 +143,33 @@ class Snoop:
     def startConversation(self):
         made_contact = False
         while not made_contact:
-            utterance = choice(["hello", "is anybody there", "hey", "who's there", "greetings"])
+            utterance = choice(
+                ["hello", "is anybody there", "hey", "who's there",
+                 "greetings"])
             if speech:
                 self.updateStartUtter()
                 speak(utterance, self.o_participant)
             else:
-                print(f"{Fore.MAGENTA}{self.o_participant}: {Style.RESET_ALL}{utterance}")
-            self.chatlog.addLine(self.o_participant, utterance, self.start_utter)
+                print(
+                    f"{Fore.MAGENTA}{self.o_participant}: {Style.RESET_ALL}{utterance}")
+            self.chatlog.addLine(self.o_participant, utterance,
+                                 self.start_utter)
 
             if speech:
-                text, start_utter = listen(self.i_participant)
+                text, start_utter = listen(self.i_participant,
+                                           self.punct_tokenizer,
+                                           self.punct_model)
             else:
                 start_utter = datetime.now()
-                text = input(f"{Fore.CYAN}{self.i_participant}: {Style.RESET_ALL}")
+                text = input(
+                    f"{Fore.CYAN}{self.i_participant}: {Style.RESET_ALL}")
             self.updateStartUtter(start_utter)
 
             if text:  # triggers should be loaded from txt file in assets
-                triggers = ["hello", "hey", "how are you", "talking to me", "who are you", "hi", "sup",
-                            "what's up", "help,", "greetings", "salutations", "morning", "afternoon",
+                triggers = ["hello", "hey", "how are you", "talking to me",
+                            "who are you", "hi", "sup",
+                            "what's up", "help,", "greetings", "salutations",
+                            "morning", "afternoon",
                             "evening", "good day", "goodday", "i am"]
                 for trigger in triggers:
                     if trigger in text.lower():
@@ -165,15 +190,20 @@ class Snoop:
                     if len(text.split()) < 6:
                         introduce_topic = True
                 elif speech:
-                    text, start_utter = listen(self.i_participant)
+                    text, start_utter = listen(self.i_participant,
+                                               self.punct_tokenizer,
+                                               self.punct_model)
                 else:
-                    text = input(f"{Fore.CYAN}{self.i_participant}: {Style.RESET_ALL}")
+                    text = input(
+                        f"{Fore.CYAN}{self.i_participant}: {Style.RESET_ALL}")
                 self.updateStartUtter(start_utter)
 
                 if text:
-                    self.chatlog.addLine(self.i_participant, text, self.start_utter)
+                    self.chatlog.addLine(self.i_participant, text,
+                                         self.start_utter)
                     if not introduce_topic:
-                        continue_conversation, response = self.dialogManagement(text)
+                        continue_conversation, response = self.dialogManagement(
+                            text)
                     else:
                         introduce_topic = False
                         response = self.introduceTopic()
@@ -183,7 +213,8 @@ class Snoop:
                     else:
                         print(
                             f"{Fore.MAGENTA}{self.o_participant}: {Style.RESET_ALL}{response}")
-                    self.chatlog.addLine(self.o_participant, response, self.start_utter)
+                    self.chatlog.addLine(self.o_participant, response,
+                                         self.start_utter)
 
             self.chatlog.exportCSV()
 

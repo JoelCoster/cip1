@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 from io import BytesIO
 from random import choice
+from random import randint
 
 import pandas as pd
 import speech_recognition as sr
@@ -16,6 +17,7 @@ from pygame import mixer
 from transformers import BlenderbotTokenizer, \
     BlenderbotForConditionalGeneration
 from transformers import T5Tokenizer, T5ForConditionalGeneration
+
 
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 
@@ -91,7 +93,7 @@ class ChatLog:
         if not exist:
             os.makedirs("logs")
 
-        filename = f"logs/{datetime.now().strftime('%d-%m-%Y_%H-%M-%S')}.csv"
+        filename = f"logs/{datetime.now().isoformat(sep=' ', timespec='milliseconds')}".replace(":", "_").replace(".", "_") + ".csv"
         log_df = pd.DataFrame(self.log)
         log_df.to_csv(filename, index=True)
 
@@ -174,6 +176,17 @@ class Snoop:
                 for trigger in triggers:
                     if trigger in text.lower():
                         return text
+                    
+            else:
+                if speech:
+                    text, start_utter = listen(self.i_participant)
+                if text:  # triggers should be loaded from txt file in assets
+                    triggers = ["hello", "hey", "how are you", "talking to me", "who are you", "hi", "sup",
+                                "what's up", "help,", "greetings", "salutations", "morning", "afternoon",
+                                "evening", "good day", "goodday", "i am"]
+                    for trigger in triggers:
+                        if trigger in text.lower():
+                            return text
 
     def run(self, start_conversation=True, speech=False, i='JAM', o='SNO'):
         try:
@@ -187,7 +200,7 @@ class Snoop:
                 if start_conversation:
                     text = self.startConversation()
                     start_conversation = False
-                    if len(text.split()) < 6:
+                    if len(text.split()) < 8:
                         introduce_topic = True
                 elif speech:
                     text, start_utter = listen(self.i_participant,
@@ -197,6 +210,9 @@ class Snoop:
                     text = input(
                         f"{Fore.CYAN}{self.i_participant}: {Style.RESET_ALL}")
                 self.updateStartUtter(start_utter)
+
+                if text and randint(1, 100) > 80:
+                    introduce_topic = True
 
                 if text:
                     self.chatlog.addLine(self.i_participant, text,

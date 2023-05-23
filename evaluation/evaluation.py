@@ -1,11 +1,7 @@
 import pandas as pd
 import argparse
 
-from algorithm_1_diversity import diversity
-from utils import get_tfidf_sim
-
-
-SPEAKER = 'SNO'
+from algorithm_1_diversity import diversity_percentage
 
 
 def parse_args() -> argparse.ArgumentParser():
@@ -18,23 +14,10 @@ def parse_args() -> argparse.ArgumentParser():
 def main():
     args = parse_args()
 
-    df = pd.read_csv(args.logfile, index_col=0)
+    df_logs = pd.read_csv(args.logfile, index_col=0)
 
-    # Calculate the TF-IDF cosine similarity matrix
-    mat_tf = get_tfidf_sim(df)
-
-    # Calculate diversity score (Algorithm 1)
-    rep_threshold = 0.8
-    diversity_score = 0
-    for i in range(df.shape[0]):
-        # Determine current turn and previous turns
-        current_turn = df.iloc[i]
-        previous_turns = df.iloc[:i]
-
-        # Check if utterance is said by current speaker
-        if SPEAKER in current_turn['speaker']:
-            diversity_score += diversity(current_turn, previous_turns, mat_tf, rep_threshold)
-    print('Diversity score: {0}'.format(diversity_score))
+    # Algorithm 1
+    diversity_percentage(df_logs)
 
     # Calculate consistency score (Algorithm 2)
 

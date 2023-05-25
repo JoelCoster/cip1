@@ -8,6 +8,7 @@ from utils import has_question, get_cosine_sim
 def diversity_percentage(df: pd.DataFrame):
     total_penalty = 0
     mat_tf = get_tfidf_sim(df)
+    utterance_count = df[df['speaker'].str.contains(SPEAKER_TO_EVALUATE)].shape[0]
 
     for i in range(df.shape[0]):
         current_turn = df.iloc[i]
@@ -18,8 +19,7 @@ def diversity_percentage(df: pd.DataFrame):
             total_penalty += diversity_penalty(mat_tf, current_turn, previous_turns)
 
     print(f'Diversity score: {total_penalty}')
-
-    # TODO: calc percentage
+    print(f'Diversity percentage: {total_penalty / utterance_count:.2%}')
 
 
 def diversity_penalty(mat_tf, current_turn, previous_turns):
@@ -50,13 +50,13 @@ def diversity_penalty(mat_tf, current_turn, previous_turns):
         # Check previous turn is not a repetitive question (line 9, 10 and 11 in pseudocode)
         elif current_turn.name > 0:
             previous_turn = previous_turns.iloc[current_turn.name - 1]
-            # TODO BUG: hij komt nooit in deze loop als er geen vragen zijn
+            if len(repeated_questions):
+                for repeated_question in repeated_questions:
+                    if get_cosine_sim(previous_turn.name, repeated_question.name, mat_tf) <= DIVERSITY_THRESHOLD:
+                        flag_rep = True
+            else:
+                flag_rep = True
 
-            for repeated_question in repeated_questions:
-                if get_cosine_sim(previous_turn.name, repeated_question.name, mat_tf) <= DIVERSITY_THRESHOLD:
-                    flag_rep = True
-
-    print(flag_question, flag_rep)
     if flag_question or flag_rep:
         turn_penalty += 1
 

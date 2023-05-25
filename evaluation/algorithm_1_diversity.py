@@ -1,25 +1,33 @@
 import pandas as pd
 
-from constants import SPEAKER_TO_EVALUATE, DIVERSITY_THRESHOLD
+from constants import DIVERSITY_THRESHOLD
 from utils import get_tfidf_sim
 from utils import has_question, get_cosine_sim
 
 
-def diversity_percentage(df: pd.DataFrame):
+def diversity_percentage(df: pd.DataFrame, speaker):
     total_penalty = 0
     mat_tf = get_tfidf_sim(df)
-    utterance_count = df[df['speaker'].str.contains(SPEAKER_TO_EVALUATE)].shape[0]
+    utterance_count = df[df['speaker'].str.contains(speaker)].shape[0]
 
+    total_repeated_questions = dict()
     for i in range(df.shape[0]):
         current_turn = df.iloc[i]
         previous_turns = df.iloc[:i]
 
         # Check if utterance is said by current speaker
-        if SPEAKER_TO_EVALUATE in current_turn['speaker']:
-            total_penalty += diversity_penalty(mat_tf, current_turn, previous_turns)
+        if speaker in current_turn['speaker']:
+            penalty, repeated_questions = diversity_penalty(mat_tf, current_turn, previous_turns)
+            for repeated_question in repeated_questions:
+                if repeated_question.name not in [total_repeated_question.name for total_repeated_question in total_repeated_questions]:
+                    total_repeated_questions[i] = repeated_question
+            total_penalty += penalty
 
-    print(f'Diversity score: {total_penalty}')
-    print(f'Diversity percentage: {total_penalty / utterance_count:.2%}')
+    print(f'Diversity score (\"{speaker}\"): {total_penalty}')
+    print(f'Diversity percentage (\"{speaker}\"): {total_penalty / utterance_count:.2%}')
+    print()
+
+    return total_repeated_questions
 
 
 def diversity_penalty(mat_tf, current_turn, previous_turns):
@@ -37,7 +45,7 @@ def diversity_penalty(mat_tf, current_turn, previous_turns):
 
     # Check if there are repeated utterances (line 6 in pseudocode)
     if len(repeated_turns) == 0:
-        return turn_penalty
+        return turn_penalty, repeated_questions
 
     flag_question, flag_rep = False, False
 
@@ -60,4 +68,4 @@ def diversity_penalty(mat_tf, current_turn, previous_turns):
     if flag_question or flag_rep:
         turn_penalty += 1
 
-    return turn_penalty
+    return turn_penalty, repeated_questions

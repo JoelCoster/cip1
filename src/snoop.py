@@ -17,6 +17,7 @@ from pygame import mixer
 from transformers import BlenderbotTokenizer, BlenderbotForConditionalGeneration
 from transformers import T5Tokenizer, T5ForConditionalGeneration
 import warnings
+import csv
 
 warnings.filterwarnings("ignore")
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
@@ -72,12 +73,35 @@ class PreviousConversations:
     def __init__(self):
         self.log = []
 
-
     def update(self, participant):
         for filename in os.listdir("logs/"):
             if filename[-3:] == "csv":
-                print(filename)
-    
+                f = open("logs/" + filename, "r")
+                f.readline()
+                for line in f.readlines():
+                    try:
+                        speaker = line.split(",")[2][1:-1]
+                        utterance = ",".join(line.strip().split(",")[3:])[1:-1]
+                        if speaker == participant:
+                            self.log.append(utterance)
+                    except:
+                        pass
+
+    def hasBeenSaidPreviously(self, utterance):
+        repetition, question = False, False
+        try:
+            utterance = utterance.strip().split()
+            for line in self.log:
+                previous_utterance = line.strip().split()
+                if utterance == previous_utterance:
+                    if len(utterance) > 8:
+                        repetition = True
+                        if utterance[-1][-1] == "?":
+                            question = True
+            return repetition, question
+        except:
+            return repetition, question
+
 
 
 class ChatLog:
@@ -98,15 +122,18 @@ class ChatLog:
     
     def hasBeenSaid(self, participant, utterance):
         repetition, question = False, False
-        utterance = utterance.strip().split()
-        for line in self.getParticipantLog(participant):
-            previous_utterance = line.strip().split()
-            if utterance == previous_utterance:
-                if len(utterance) > 8:
-                    repetition = True
-                if utterance[-1][-1] == "?":
-                    repetition, question = True, True
-        return repetition, question
+        try:
+            utterance = utterance.strip().split()
+            for line in self.getParticipantLog(participant):
+                previous_utterance = line.strip().split()
+                if utterance == previous_utterance:
+                    if len(utterance) > 8:
+                        repetition = True
+                    if utterance[-1][-1] == "?":
+                        repetition, question = True, True
+            return repetition, question
+        except:
+            return repetition, question
 
     def exportCSV(self):
         exist = os.path.exists("logs")
@@ -115,7 +142,7 @@ class ChatLog:
 
         filename = f"logs/{datetime.now().isoformat(sep=' ', timespec='milliseconds')}".replace(":", "_").replace(".", "_") + ".csv"
         log_df = pd.DataFrame(self.log)
-        log_df.to_csv(filename, index=True)
+        log_df.to_csv(filename, index=True, quoting=csv.QUOTE_NONNUMERIC)
 
 
 class Snoop:
@@ -154,7 +181,7 @@ class Snoop:
     def introduceTopic(self):
         topics_file = open("assets/topics.txt", "r")
         topics = []
-        transitions = ["Anyway, ", "By the way, ", "On another subject, "]
+        transitions = ["Anyway, ", "By the way, ", "On another subject, ", "Anyway, ", "Anyway, "]
         for line in topics_file.readlines():
             topics.append(line.strip())
         return choice(transitions) + choice(topics)
@@ -162,7 +189,7 @@ class Snoop:
     def startConversation(self):
         made_contact = False
         while not made_contact:
-            utterance = choice(["hello", "is anybody there", "hey", "greetings", "please don't ignore me"])
+            utterance = choice(["hello", "hey", "greetings"])
             if speech:
                 self.updateStartUtter()
                 speak(utterance, self.o_participant)
@@ -225,10 +252,19 @@ class Snoop:
                     else:
                         response = choice(["You already said that. ", "Yeah you told me. ", "I know, you told me that. "])
 
+                # check if the user is repeating from a previous conversation
+                if not repetition:
+                    repetition, question = self.previous_conversations.hasBeenSaidPreviously(text)
+                    if repetition:
+                        if question:
+                            response = choice(["I remember you asking that in an earlier conversation. ", "If I recall correctly you asked me that once before. "])
+                        else:
+                            response = choice(["I know, you told me in a previous conversation. ", "Yes, I remember that from earlier. ", "Right, I remember you telling me that once before. "])
+
                 # introduce new topics
-                if text and randint(1, 100) > 30 and not "?" in text and not repetition:
+                if text and randint(1, 100) < 30 and not "?" in text and not repetition:
                     introduce_topic = True
-                elif text and randint(1, 100) > 60 and repetition:
+                elif text and randint(1, 100) < 70 and repetition:
                     introduce_topic = True
 
                 # regular responses

@@ -68,7 +68,16 @@ def speak(text, o_participant):
         time.sleep(0.01)
 
 
+class PreviousConversations:
+    def __init__(self):
+        self.log = []
 
+
+    def update(self, participant):
+        for filename in os.listdir("logs/"):
+            if filename[-3:] == "csv":
+                print(filename)
+    
 
 
 class ChatLog:
@@ -112,6 +121,7 @@ class ChatLog:
 class Snoop:
     def __init__(self):
         self.chatlog = ChatLog()
+        self.previous_conversations = PreviousConversations()
         model_name = "facebook/blenderbot-400m-distill"
         # model_name = "facebook/blenderbot-1B-distill"
 
@@ -190,6 +200,7 @@ class Snoop:
         try:
             self.i_participant = '{0}_IN'.format(i)
             self.o_participant = '{0}_OUT'.format(o)
+            self.previous_conversations.update(self.i_participant)
 
             continue_conversation = True
             introduce_topic = False

@@ -33,7 +33,7 @@ def listen(i_participant, punct_tokenizer, punct_model):
         stt.pause_threshold = 1
         start_utter = datetime.now()
         audio = stt.listen(source)
-    if True:
+    try:
         print(f"{Fore.GREEN}Recognizing...{Style.RESET_ALL}")
         query = stt.recognize_google(audio, language='en-us')
 
@@ -43,9 +43,8 @@ def listen(i_participant, punct_tokenizer, punct_model):
         query = punct_tokenizer.decode(result[0], skip_special_tokens=True)
 
         print(f"{Fore.CYAN}{i_participant}: {Style.RESET_ALL}{query}")
-
-    else:
-    #except Exception as e:
+    
+    except Exception as e:
         print(e)
         return None, None
 
@@ -69,6 +68,9 @@ def speak(text, o_participant):
         time.sleep(0.01)
 
 
+
+
+
 class ChatLog:
     def __init__(self):
         self.id = 0
@@ -83,7 +85,19 @@ class ChatLog:
         return self.log
 
     def getParticipantLog(self, participant):
-        return [line for line in self.log if line[0] == participant]
+        return [self.log["utterance"][i] for i in range(len(self.log["speaker"])) if self.log["speaker"][i] == participant]
+    
+    def hasBeenSaid(self, participant, utterance):
+        repetition, question = False, False
+        utterance = utterance.strip().split()
+        for line in self.getParticipantLog(participant):
+            previous_utterance = line.strip().split()
+            if utterance == previous_utterance:
+                if len(utterance) > 8:
+                    repetition = True
+                if utterance[-1][-1] == "?":
+                    repetition, question = True, True
+        return repetition, question
 
     def exportCSV(self):
         exist = os.path.exists("logs")
@@ -100,7 +114,7 @@ class Snoop:
         self.chatlog = ChatLog()
         model_name = "facebook/blenderbot-400m-distill"
         # model_name = "facebook/blenderbot-1B-distill"
-        # model_name = "facebook/blenderbot-3B"
+
         self.model = BlenderbotForConditionalGeneration.from_pretrained(model_name)
         self.tokenizer = BlenderbotTokenizer.from_pretrained(model_name)
         self.start_utter = datetime.now()
@@ -128,12 +142,12 @@ class Snoop:
             self.start_utter = datetime.now()
 
     def introduceTopic(self):
-        print(os.getcwd())
         topics_file = open("assets/topics.txt", "r")
         topics = []
+        transitions = ["Anyway, ", "By the way, ", "On another subject, "]
         for line in topics_file.readlines():
             topics.append(line.strip())
-        return choice(topics)
+        return choice(transitions) + choice(topics)
 
     def startConversation(self):
         made_contact = False
@@ -180,36 +194,45 @@ class Snoop:
             continue_conversation = True
             introduce_topic = False
             while continue_conversation:
+                response = ""
                 start_utter = datetime.now()
                 if start_conversation:
                     text = self.startConversation()
                     start_conversation = False
-                    if len(text.split()) < 8:
-                        introduce_topic = True
+                    #if len(text.split()) < 8: introduce_topic = True # should probably be disabled for evaluation run
                 elif speech:
                     text, start_utter = listen(self.i_participant, self.punct_tokenizer, self.punct_model)
                 else:
-                    text = input(
-                        f"{Fore.CYAN}{self.i_participant}: {Style.RESET_ALL}")
+                    text = input(f"{Fore.CYAN}{self.i_participant}: {Style.RESET_ALL}")
                 self.updateStartUtter(start_utter)
 
-                if text and randint(1, 100) > 60 and not "?" in text:
+                # check if user is repeating themselves
+                repetition, question = self.chatlog.hasBeenSaid(self.i_participant, text)
+                if repetition:
+                    if question:
+                        response = choice(["You already asked that. ", "didn't I just answer that? ", "Don't you remember I just told you? "])
+                    else:
+                        response = choice(["You already said that. ", "Yeah you told me. ", "I know, you told me that. "])
+
+                # introduce new topics
+                if text and randint(1, 100) > 30 and not "?" in text and not repetition:
+                    introduce_topic = True
+                elif text and randint(1, 100) > 60 and repetition:
                     introduce_topic = True
 
+                # regular responses
                 if text:
-                    self.chatlog.addLine(self.i_participant, text,
-                                         self.start_utter)
-                    if not introduce_topic:
+                    self.chatlog.addLine(self.i_participant, text, self.start_utter)
+                    if not introduce_topic and not repetition:
                         continue_conversation, response = self.dialogManagement(text)
                     else:
                         introduce_topic = False
-                        response = self.introduceTopic()
+                        response += self.introduceTopic()
                     if speech:
                         self.updateStartUtter()
                         speak(response, self.o_participant)
                     else:
-                        print(
-                            f"{Fore.MAGENTA}{self.o_participant}: {Style.RESET_ALL}{response}")
+                        print(f"{Fore.MAGENTA}{self.o_participant}: {Style.RESET_ALL}{response}")
                     self.chatlog.addLine(self.o_participant, response, self.start_utter)
 
             self.chatlog.exportCSV()

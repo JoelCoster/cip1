@@ -158,6 +158,7 @@ class Snoop:
         self.start_utter = datetime.now()
         self.i_participant = "User"
         self.o_participant = "System"
+        self.topics = "topics.txt"
 
         self.punct_tokenizer = T5Tokenizer.from_pretrained('SJ-Ray/Re-Punctuate')
         self.punct_model = T5ForConditionalGeneration.from_pretrained('SJ-Ray/Re-Punctuate', from_tf=True)
@@ -192,7 +193,7 @@ class Snoop:
             self.start_utter = datetime.now()
 
     def introduceTopic(self):
-        topics_file = open("assets/topics.txt", "r")
+        topics_file = open("assets/" + self.topics, "r")
         topics = []
         transitions = ["Anyway, ", "By the way, ", "On another subject, ", "Anyway, ", "Let's change the topic, " "Anyway, "]
         for line in topics_file.readlines():
@@ -236,12 +237,13 @@ class Snoop:
                         if trigger in text.lower():
                             return text
 
-    def run(self, start_conversation=True, speech=False, i='JAM', o='SNO'):
+    def run(self, start_conversation=True, speech=False, i='JAM', o='SNO', topics="topics.txt"):
         try:
             self.i_participant = '{0}_IN'.format(i)
             self.o_participant = '{0}_OUT'.format(o)
             self.previous_conversations.update(self.i_participant)
             self.previous_conversations.update(self.o_participant)
+            self.topics = topics
 
             continue_conversation = True
             introduce_topic = False
@@ -307,7 +309,7 @@ class Snoop:
 
 
 if __name__ == "__main__":
-    i, o = 'JAM', 'SNO'
+    i, o, topics = 'JAM', 'SNO', "topics.txt"
 
     for arg in sys.argv:
         print(arg)
@@ -317,6 +319,8 @@ if __name__ == "__main__":
             i = arg.split('=')[-1]
         if "--o" in arg:
             o = arg.split('=')[-1]
+        if "--topics" in arg:
+            topics = arg.split('=')[-1]
 
     snoop = Snoop()
     speech, start_conversation = False, False
@@ -324,5 +328,6 @@ if __name__ == "__main__":
         speech = True
     if "--start" in sys.argv:
         start_conversation = True
+    
 
-    snoop.run(start_conversation=start_conversation, speech=speech, i=i, o=o)
+    snoop.run(start_conversation=start_conversation, speech=speech, i=i, o=o, topics=topics)

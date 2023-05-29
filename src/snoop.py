@@ -276,8 +276,10 @@ class Snoop:
                     repetition, question = self.previous_conversations.hasBeenSaidPreviously(self.i_participant, text)
                     if repetition:
                         if question:
+                            print(f"{Fore.RED}Repeat question from user in previous conversation detected, changing topic {Style.RESET_ALL}")
                             response = choice(["I remember you asking that in an earlier conversation. ", "If I recall correctly you asked me that once before. "])
                         else:
+                            print(f"{Fore.RED}Repeat statement from user in previous conversation detected, changing topic {Style.RESET_ALL}")
                             response = choice(["I know, you told me in a previous conversation. ", "Yes, I remember that from earlier. ", "Right, I remember you telling me that once before. "])
 
                 # introduce new topics

@@ -71,9 +71,10 @@ def speak(text, o_participant):
 
 class PreviousConversations:
     def __init__(self):
-        self.log = []
+        self.log = {}
 
     def update(self, participant):
+        self.log[participant] = []
         for filename in os.listdir("logs/"):
             if filename[-3:] == "csv":
                 f = open("logs/" + filename, "r")
@@ -83,18 +84,18 @@ class PreviousConversations:
                         speaker = line.split(",")[2][1:-1]
                         utterance = ",".join(line.strip().split(",")[3:])[1:-1]
                         if speaker == participant:
-                            self.log.append(utterance)
+                            self.log[participant].append(utterance)
                     except:
                         pass
 
-    def hasBeenSaidPreviously(self, utterance):
+    def hasBeenSaidPreviously(self, participant, utterance):
         repetition, question = False, False
         try:
             utterance = utterance.strip().split()
-            for line in self.log:
+            for line in self.log[participant]:
                 previous_utterance = line.strip().split()
                 if utterance == previous_utterance:
-                    if len(utterance) > 8:
+                    if len(utterance) > 7:
                         repetition = True
                         if utterance[-1][-1] == "?":
                             question = True
@@ -127,7 +128,7 @@ class ChatLog:
             for line in self.getParticipantLog(participant):
                 previous_utterance = line.strip().split()
                 if utterance == previous_utterance:
-                    if len(utterance) > 8:
+                    if len(utterance) > 7:
                         repetition = True
                     if utterance[-1][-1] == "?":
                         repetition, question = True, True
@@ -170,7 +171,19 @@ class Snoop:
         inputs = self.tokenizer([text], return_tensors="pt")
         reply_ids = self.model.generate(**inputs)
 
-        return True, re.sub(r'<.*?>', r'', self.tokenizer.batch_decode(reply_ids)[0]).strip()
+        response = re.sub(r'<.*?>', r'', self.tokenizer.batch_decode(reply_ids)[0]).strip()
+
+        # check for repeat statements
+        repetition, question = self.chatlog.hasBeenSaid(self.o_participant, response)
+        if not repetition:
+            repetition, question = self.previous_conversations.hasBeenSaidPreviously(self.o_participant, response)
+        if repetition and not "how are you" in response.lower() and not "hello" in response.lower():
+            print(f"{Fore.RED}Repeat response from system detected, changing topic {Style.RESET_ALL}")
+            response = choice(["Sorry, I don't want to talk about that again. ", "I'm getting a Deja Vu, ",
+                               "Sorry, I think we already discussed that. ", "I think we talked about this already. "])
+            response += self.introduceTopic()
+
+        return True, response
 
     def updateStartUtter(self, start_utter=None):
         if start_utter:
@@ -181,7 +194,7 @@ class Snoop:
     def introduceTopic(self):
         topics_file = open("assets/topics.txt", "r")
         topics = []
-        transitions = ["Anyway, ", "By the way, ", "On another subject, ", "Anyway, ", "Anyway, "]
+        transitions = ["Anyway, ", "By the way, ", "On another subject, ", "Anyway, ", "Let's change the topic, " "Anyway, "]
         for line in topics_file.readlines():
             topics.append(line.strip())
         return choice(transitions) + choice(topics)
@@ -228,9 +241,11 @@ class Snoop:
             self.i_participant = '{0}_IN'.format(i)
             self.o_participant = '{0}_OUT'.format(o)
             self.previous_conversations.update(self.i_participant)
+            self.previous_conversations.update(self.o_participant)
 
             continue_conversation = True
             introduce_topic = False
+            new_conversation = True
             while continue_conversation:
                 response = ""
                 start_utter = datetime.now()
@@ -248,13 +263,15 @@ class Snoop:
                 repetition, question = self.chatlog.hasBeenSaid(self.i_participant, text)
                 if repetition:
                     if question:
+                        print(f"{Fore.RED}Repeat question from user detected, changing topic {Style.RESET_ALL}")
                         response = choice(["You already asked that. ", "didn't I just answer that? ", "Don't you remember I just told you? "])
                     else:
+                        print(f"{Fore.RED}Repeat statement from user detected, changing topic {Style.RESET_ALL}")
                         response = choice(["You already said that. ", "Yeah you told me. ", "I know, you told me that. "])
 
                 # check if the user is repeating from a previous conversation
                 if not repetition:
-                    repetition, question = self.previous_conversations.hasBeenSaidPreviously(text)
+                    repetition, question = self.previous_conversations.hasBeenSaidPreviously(self.i_participant, text)
                     if repetition:
                         if question:
                             response = choice(["I remember you asking that in an earlier conversation. ", "If I recall correctly you asked me that once before. "])
@@ -262,7 +279,7 @@ class Snoop:
                             response = choice(["I know, you told me in a previous conversation. ", "Yes, I remember that from earlier. ", "Right, I remember you telling me that once before. "])
 
                 # introduce new topics
-                if text and randint(1, 100) < 30 and not "?" in text and not repetition:
+                if text and randint(1, 100) < 30 and not "?" in text and not repetition and not new_conversation:
                     introduce_topic = True
                 elif text and randint(1, 100) < 70 and repetition:
                     introduce_topic = True
@@ -281,6 +298,7 @@ class Snoop:
                     else:
                         print(f"{Fore.MAGENTA}{self.o_participant}: {Style.RESET_ALL}{response}")
                     self.chatlog.addLine(self.o_participant, response, self.start_utter)
+                    new_conversation = False
 
             self.chatlog.exportCSV()
 

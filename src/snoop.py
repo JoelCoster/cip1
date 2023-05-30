@@ -180,7 +180,7 @@ class Snoop:
             repetition, question = self.previous_conversations.hasBeenSaidPreviously(self.o_participant, response)
         if repetition and not "how are you" in response.lower() and not "hello" in response.lower():
             print(f"{Fore.RED}Repeat response from system detected, changing topic {Style.RESET_ALL}")
-            if len(text.split() > 4): # fix for short answers
+            if len(text.split()) > 4: # fix for short answers
                 response = choice(["Sorry, I don't want to talk about that again. ", "I'm getting a Deja Vu, ",
                                    "Sorry, I think we already discussed that. ", "I think we talked about this already. "])
             else:
@@ -259,6 +259,7 @@ class Snoop:
                 start_utter = datetime.now()
                 if start_conversation:
                     text = self.startConversation()
+                    print(f"{Fore.RED}Grounding completed, conversation started {Style.RESET_ALL}")
                     start_conversation = False
                     #if len(text.split()) < 8: introduce_topic = True # should probably be disabled for evaluation run
                 elif speech:

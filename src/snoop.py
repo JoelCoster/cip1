@@ -193,9 +193,12 @@ class Snoop:
             self.start_utter = datetime.now()
 
     def introduceTopic(self):
-        topics_file = open("assets/" + self.topics, "r")
+        if self.topics != "random":
+            topics_file = open("assets/" + self.topics, "r")
+        else:
+            topics_file = open("assets/" + choice(["topics.txt", "deep.txt", "deranged.txt", "weird.txt"]), "r")
         topics = []
-        transitions = ["Anyway, ", "By the way, ", "On another subject, ", "Anyway, ", "Let's change the topic, " "Anyway, "]
+        transitions = ["Anyway, ", "By the way, ", "On another subject, ", "Anyway, ", "Let's change the topic. ", "Anyway, "]
         for line in topics_file.readlines():
             topics.append(line.strip())
         return choice(transitions) + choice(topics)
